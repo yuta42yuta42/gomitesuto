@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ごみとしょりと活用 4択クイズゲーム (時間制限あり)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* カスタムスタイル */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8; /* 薄い青灰色の背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .quiz-container {
+            background-color: #ffffff; /* 白い背景 */
+            padding: 30px;
+            border-radius: 15px; /* 角を丸く */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* 影 */
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        .timer {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .question {
+            font-size: 1.5rem; /* 大きめのフォント */
+            margin-bottom: 30px;
+            color: #333; /* 濃い灰色 */
+            text-align: left; /* 問題文を左寄せに */
+        }
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2列 */
+            gap: 15px; /* ボタン間のスペース */
+            margin-bottom: 30px;
+        }
+        .answer-button {
+            background-color: #4a90e2; /* 青いボタン */
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px; /* 角を丸く */
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease; /* ホバーアニメーション */
+            text-align: left; /* 回答テキストを左寄せに */
+        }
+        .answer-button:hover {
+            background-color: #357bd8; /* ホバーで少し濃い青に */
+        }
+        .answer-button:disabled {
+            background-color: #cccccc; /* 無効化されたボタンの色 */
+            cursor: not-allowed;
+        }
+        .result {
+            font-size: 1.3rem;
+            margin-top: 20px;
+            min-height: 1.5em; /* 結果表示エリアの最小高さ */
+        }
+        .correct {
+            color: #28a745; /* 緑色 */
+        }
+        .incorrect {
+            color: #dc3545; /* 赤色 */
+        }
+        .next-button {
+            background-color: #ff9800; /* オレンジ色のボタン */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+        .next-button:hover {
+            background-color: #f57c00; /* ホバーで少し濃いオレンジに */
+        }
+         /* レスポンシブ対応 */
+        @media (max-width: 600px) {
+            .answers {
+                grid-template-columns: 1fr; /* 1列 */
+            }
+            .question, .answer-button {
+                text-align: center; /* モバイルでは中央寄せに戻す */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div id="timer" class="timer">残り時間: --.-- 秒</div>
+        <div id="question" class="question">ここに問題が表示されます</div>
+        <div id="answers" class="answers">
+            </div>
+        <div id="result" class="result"></div>
+        <button id="next-button" class="next-button hidden">次の問題</button>
+    </div>
+
+    <script>
+        // クイズデータ
+        const quizData = [
+            {
+                question: "1. ごみ処理センターで、ごみを燃やしたときに出る熱は何に使われていますか。",
+                answers: ["ア) プールのお湯をあたためる", "イ) 電気をつくる", "ウ) 温室で野菜を育てる", "エ) 工場でお湯をわかす"],
+                correct: 1 // イ
+            },
+            {
+                question: "2. ごみを燃やしたあとに出る「はい」は、どのように処理されますか。",
+                answers: ["ア) そのまま海にすてる", "イ) きれいにそうじして、公園にまく", "ウ) 有害なものを取りのぞき、安全な場所にうめる", "エ) もう一度燃やして、なくしてしまう"],
+                correct: 2 // ウ
+            },
+            {
+                question: "3. ごみ収集車「パッカー車」のごみを積みこむしくみで、正しい説明はどれですか。",
+                answers: ["ア) アームで持ち上げて、上から落としこむ", "イ) 回転する板と押しこむ板で、奥につめこむ", "ウ) 大きな掃除機のようなもので、吸いこむ", "エ) 人が手で中に投げ入れる"],
+                correct: 1 // イ
+            },
+            {
+                question: "4. ごみ収集カレンダーで、「その他プラスチック」は、どの曜日に出すことになっていますか。",
+                answers: ["ア) 月曜日・木曜日", "イ) 火曜日", "ウ) 水曜日", "エ) 金曜日"],
+                correct: 2 // ウ
+            },
+            {
+                question: "5. わたしたちが出したペットボトルは、リサイクルされて何になることがありますか。",
+                answers: ["ア) 新しいガラスびん", "イ) トイレットペーパー", "ウ) 洋服やカーペット", "エ) 鉄のなべ"],
+                correct: 2 // ウ
+            },
+            {
+                question: "6. 新聞や雑誌などの古紙は、リサイクルされて何になることがありますか。",
+                answers: ["ア) ペットボトル", "イ) 鉄筋", "ウ) 段ボールやトイレットペーパー", "エ) プラスチックのおもちゃ"],
+                correct: 2 // ウ
+            },
+            {
+                question: "7. 使い終わったスプレー缶やカセットボンベを出すときの注意点は何ですか。",
+                answers: ["ア) 中身を使い切って、そのまま出す", "イ) 中身を使い切って、あなをあけずに出す", "ウ) 中身が残っていても、もえるごみと一緒に出す", "エ) 袋に入れずに、そのまま出す"],
+                correct: 1 // イ
+            },
+            {
+                question: "8. 1ページ右下の図で、いちばん右側にある「リサイクルされて生まれかわったもの」の中で、道路の材料になるものはどれから作られますか。",
+                answers: ["ア) 古紙", "イ) ペットボトル", "ウ) びん・ガラスくず", "エ) プラスチック"],
+                correct: 2 // ウ
+            },
+            {
+                question: "9. ごみをへらすための「4R」の考え方で、「リデュース」とはどのようなことですか。",
+                answers: ["ア) くり返し使うこと", "イ) ごみになるものをことわること", "ウ) ごみを分別して、資源として出すこと", "エ) ごみそのものをへらすこと"],
+                correct: 3 // エ
+            },
+            {
+                question: "10. マイバッグを使ったり、つめかえ用製品を選んだりすることは、「4R」のどれにあてはまりますか。",
+                answers: ["ア) リフューズ（ことわる）", "イ) リデュース（へらす）", "ウ) リユース（くり返し使う）", "エ) リサイクル（再生利用する）"],
+                correct: 1 // イ
+            },
+            {
+                question: "11. 着なくなった服を弟や妹にあげたり、フリーマーケットで売ったりすることは、「4R」のどれにあてはまりますか。",
+                answers: ["ア) リフューズ（ことわる）", "イ) リデュース（へらす）", "ウ) リユース（くり返し使う）", "エ) リサイクル（再生利用する）"],
+                correct: 2 // ウ
+            },
+            {
+                question: "12. 資源を大切にし、むだなくくり返し利用する社会のことを何といいますか。",
+                answers: ["ア) 消費社会", "イ) 情報社会", "ウ) 循環型社会", "エ) グローバル社会"],
+                correct: 2 // ウ
+            },
+            {
+                question: "13. 「エコタウン」とは、どのような町のことですか。",
+                answers: ["ア) ごみがまったく出ない町", "イ) 工場などから出るものを資源として活用し、環境に配慮した町", "ウ) 自然がたくさんあり、静かでくらしやすい町", "エ) 新しいエネルギーだけを使う町"],
+                correct: 1 // イ
+            },
+            {
+                question: "14. ごみ処理施設をつくるとき、市町村はどのようなことを大切にしていますか。",
+                answers: ["ア) できるだけ安い費用でつくること", "イ) 住民の意見を聞かず、はやくつくること", "ウ) 住民の安全を考え、話し合いをすること", "エ) おしゃれなデザインにすること"],
+                correct: 2 // ウ
+            },
+            {
+                question: "15. ごみ収集の仕事をしている人の安全を守るために、わたしたちができることは何ですか。",
+                answers: ["ア) 重いごみは収集車の近くまで運んであげる", "イ) ごみを出す時間を守り、正しく分別する", "ウ) 収集作業中に話しかけて、作業のじゃまをする", "エ) 収集車のうしろについて走る"],
+                correct: 1 // イ
+            },
+            {
+                question: "16. ごみを出すときのルールとして、正しくないものはどれですか。",
+                answers: ["ア) 決められた曜日に出す", "イ) きちんと分別する", "ウ) 夜中や朝早く、いつでも出してよい", "エ) 指定されたごみ袋や容器で出す"],
+                correct: 2 // ウ
+            },
+            {
+                question: "17. 使い終わったびんやかんは、どのようにリサイクルされますか。",
+                answers: ["ア) くだかれて、新しい紙の原料になる", "イ) とかされて、新しいびんやかん、鉄の製品などになる", "ウ) 燃やされて、火力発電の燃料になる", "エ) うめられて、土地をかさ上げする材料になる"],
+                correct: 1 // イ
+            },
+            {
+                question: "18. 「もえないごみ」の日に出すものとして、適切なものはどれですか。",
+                answers: ["ア) われた茶わん", "イ) ペットボトル", "ウ) 古い新聞紙", "エ) 生ごみ"],
+                correct: 0 // ア
+            },
+            {
+                question: "19. ごみ処理センターにある「ごみピット」とは、どのような場所ですか。",
+                answers: ["ア) ごみを燃やす大きな炉", "イ) ごみを一時的にためておく大きな穴", "ウ) ごみから電気をつくる発電機", "エ) ごみを分別する作業場"],
+                correct: 1 // イ
+            },
+            {
+                question: "20. ごみを減らすために、私たちが家庭でできることとして、適切でないものはどれですか。",
+                answers: ["ア) 買い物をするときは、本当に必要か考える", "イ) 食べ残しをしないように、食べる分だけ作る", "ウ) こわれやすいものは、たくさん包装してもらう", "エ) シャンプーなどは、つめかえ用を買う"],
+                correct: 2 // ウ
+            }
+        ];
+
+        let currentQuestionIndex = 0; // 現在の問題番号
+        let totalScore = 0; // 合計スコア
+        let timer; // タイマーID
+        let startTime; // 問題開始時刻
+
+        const questionElement = document.getElementById('question');
+        const answersElement = document.getElementById('answers');
+        const resultElement = document.getElementById('result');
+        const nextButton = document.getElementById('next-button');
+        const timerElement = document.getElementById('timer');
+
+        const MAX_TIME_PER_QUESTION = 15; // 1問あたりの最大解答時間 (秒)
+        const MAX_POINTS_PER_QUESTION = 100; // 1問あたりの最大獲得ポイント
+
+        // タイマーを開始する関数
+        function startTimer() {
+            startTime = Date.now();
+            timerElement.textContent = `残り時間: ${MAX_TIME_PER_QUESTION.toFixed(2)} 秒`;
+
+            timer = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const remainingTime = MAX_TIME_PER_QUESTION - elapsedTime;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timer);
+                    timerElement.textContent = '時間切れ！';
+                    checkAnswer(-1); // 時間切れの場合は不正解として扱う
+                } else {
+                    timerElement.textContent = `残り時間: ${remainingTime.toFixed(2)} 秒`;
+                }
+            }, 50); // 50ミリ秒ごとに更新
+        }
+
+        // タイマーを停止する関数
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        // 時間に応じたポイントを計算する関数
+        function calculateTimePoints(elapsedTime) {
+            // 経過時間が短いほど高得点になるように計算
+            // 例: 0秒で正解なら100ポイント、15秒で正解なら0ポイント
+            const timeRatio = Math.max(0, MAX_TIME_PER_QUESTION - elapsedTime) / MAX_TIME_PER_QUESTION;
+            return Math.floor(timeRatio * MAX_POINTS_PER_QUESTION);
+        }
+
+        // 問題を表示する関数
+        function displayQuestion() {
+            const currentQuiz = quizData[currentQuestionIndex];
+            questionElement.textContent = currentQuiz.question;
+
+            // 回答ボタンをクリア
+            answersElement.innerHTML = '';
+
+            // 回答ボタンを生成して表示
+            currentQuiz.answers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.classList.add('answer-button');
+                button.textContent = answer;
+                button.addEventListener('click', () => checkAnswer(index));
+                answersElement.appendChild(button);
+            });
+
+            // 結果表示と次へボタンをリセット
+            resultElement.textContent = '';
+            resultElement.className = 'result'; // クラスをリセット
+            nextButton.classList.add('hidden');
+
+            // タイマーを開始
+            startTimer();
+        }
+
+        // 回答をチェックする関数
+        function checkAnswer(selectedIndex) {
+            stopTimer(); // タイマーを停止
+
+            const currentQuiz = quizData[currentQuestionIndex];
+            const answerButtons = answersElement.querySelectorAll('.answer-button');
+            const elapsedTime = (Date.now() - startTime) / 1000; // 経過時間
+
+            // 全てのボタンを無効化
+            answerButtons.forEach(button => {
+                button.disabled = true;
+            });
+
+            if (selectedIndex === currentQuiz.correct) {
+                const timePoints = calculateTimePoints(elapsedTime);
+                totalScore += timePoints; // 時間によるポイントを加算
+                resultElement.textContent = `正解！ (${elapsedTime.toFixed(2)} 秒で ${timePoints} ポイント獲得)`;
+                resultElement.classList.add('correct');
+            } else {
+                 if (selectedIndex !== -1) { // 時間切れでない場合
+                     resultElement.textContent = `不正解。正解は「${currentQuiz.answers[currentQuiz.correct]}」でした。`;
+                 }
+                 // 時間切れの場合は既にメッセージが表示されている
+                resultElement.classList.add('incorrect');
+            }
+
+            // 次へボタンを表示
+            nextButton.classList.remove('hidden');
+        }
+
+        // 次の問題へ進む関数
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                displayQuestion(); // 次の問題を表示
+            } else {
+                endGame(); // ゲーム終了
+            }
+        }
+
+        // ゲーム終了処理
+        function endGame() {
+            stopTimer(); // 念のためタイマー停止
+            questionElement.textContent = 'ゲーム終了！';
+            answersElement.innerHTML = ''; // ボタンをクリア
+            timerElement.textContent = ''; // タイマー表示をクリア
+            resultElement.textContent = `あなたの合計スコアは ${totalScore} ポイントです。`;
+            resultElement.className = 'result'; // クラスをリセット
+            nextButton.classList.add('hidden'); // 次へボタンを隠す
+
+            // リトライボタンを追加
+            const retryButton = document.createElement('button');
+            retryButton.classList.add('next-button'); // 同じスタイルを再利用
+            retryButton.textContent = 'もう一度プレイ';
+            retryButton.addEventListener('click', resetGame);
+            answersElement.appendChild(retryButton); // answersElementに追加して中央に表示
+        }
+
+        // ゲームをリセットする関数
+        function resetGame() {
+            currentQuestionIndex = 0;
+            totalScore = 0;
+            displayQuestion(); // 最初の問題から開始
+        }
+
+        // 次へボタンのイベントリスナー
+        nextButton.addEventListener('click', nextQuestion);
+
+        // ゲーム開始
+        displayQuestion();
+
+    </script>
+</body>
+</html>
